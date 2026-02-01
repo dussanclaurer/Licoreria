@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: licoreria_backend_prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # In prod, usually connection string comes from env var injected by CI/CD or Secret Manager
+      # For this setup we assume it points to the postgres service
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/licoreria?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - licoreria_prod_net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: licoreria_db_prod
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: licoreria
+    volumes:
+      - ./docker-data/postgres-prod:/var/lib/postgresql/data
+    networks:
+      - licoreria_prod_net
+
+networks:
+  licoreria_prod_net:
+    driver: bridge
