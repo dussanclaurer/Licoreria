@@ -15,16 +15,16 @@ model Product {
   categories  Category[]
   batches     Batch[]
   saleItems   SaleItem[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 }
 
 model Category {
   id          String    @id @default(uuid())
   name        String    @unique
   products    Product[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
 }
 
 model Batch {
@@ -33,9 +33,9 @@ model Batch {
   product        Product  @relation(fields: [productId], references: [id])
   currentStock   Int
   initialStock   Int
-  expirationDate DateTime
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  expirationDate DateTime @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
   logs           InventoryLog[]
 
   @@index([expirationDate]) // Optimize FEFO
@@ -45,7 +45,7 @@ model Sale {
   id        String     @id @default(uuid())
   total     Decimal    @db.Decimal(10, 2)
   items     SaleItem[]
-  createdAt DateTime   @default(now())
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
 }
 
 model SaleItem {
@@ -65,5 +65,5 @@ model InventoryLog {
   batch     Batch    @relation(fields: [batchId], references: [id])
   quantity  Int      // Negative for sales, positive for restock
   reason    String
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
