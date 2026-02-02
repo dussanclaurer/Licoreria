@@ -62,4 +62,15 @@ const start = async () => {
     }
 };
 
+import { CashController } from './infrastructure/controllers/cash.controller.js';
+
+const cashController = new CashController();
+
+// Cash Management
+server.register(async (instance) => {
+    instance.post('/cash/open', cashController.openShift.bind(cashController));
+    instance.post('/cash/close', cashController.closeShift.bind(cashController));
+    instance.get('/cash/status/:userId', cashController.checkStatus.bind(cashController));
+});
+
 start();

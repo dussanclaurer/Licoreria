@@ -17,6 +17,8 @@ export class Sale {
         public readonly id: string,
         public readonly items: SaleItem[],
         public readonly date: Date = new Date(),
+        public readonly paymentMethod: 'CASH' | 'CARD' | 'QR' = 'CASH',
+        public readonly cashShiftId?: string | null,
     ) { }
 
     get total(): number {

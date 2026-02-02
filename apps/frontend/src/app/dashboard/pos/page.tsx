@@ -3,13 +3,17 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useCartStore } from '@/lib/store';
+import { useShiftStore } from '@/lib/shift-store';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Printer, Lock } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // Define Product type based on backend
 interface Product {
@@ -21,7 +25,39 @@ interface Product {
 
 export default function POSPage() {
     const [search, setSearch] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'QR'>('CASH');
     const { items, addItem, removeItem, updateQuantity, clearCart, total } = useCartStore();
+    const { isOpen, checkStatus, openShift } = useShiftStore();
+
+    // Shift State
+    const [initialAmount, setInitialAmount] = useState('100');
+    // Receipt State
+    const [lastSale, setLastSale] = useState<any>(null);
+
+    // Helper to get User ID
+    const getUserId = () => {
+        const token = localStorage.getItem('token');
+        if (!token) return null;
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload).userId;
+        } catch (e) {
+            console.error("Token decode error:", e);
+            return null;
+        }
+    };
+
+    // Fetch User ID from Token
+    useEffect(() => {
+        const uid = getUserId();
+        if (uid) {
+            checkStatus(uid);
+        }
+    }, [checkStatus]);
 
     const { data: products, isLoading } = useQuery<Product[]>({
         queryKey: ['products'],
@@ -31,24 +67,57 @@ export default function POSPage() {
         },
     });
 
+    // ... (saleMutation) ...
+
     const saleMutation = useMutation({
         mutationFn: async () => {
+            const uid = getUserId();
+            if (!uid) throw new Error("Usuario no identificado");
+
             const payload = {
                 items: items.map((i) => ({
                     productId: i.productId,
                     quantity: i.quantity,
                 })),
+                userId: uid,
+                paymentMethod: paymentMethod,
             };
-            await api.post('/sales', payload);
+            const { data } = await api.post('/sales', payload);
+            return data;
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             toast.success('Venta registrada correctamente');
             clearCart();
+            setLastSale(data);
         },
-        onError: (error: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        onError: (error: any) => {
             toast.error(error.response?.data?.error || 'Error al registrar venta');
         },
     });
+
+    const handleOpenShift = async () => {
+        const uid = getUserId();
+        if (!uid) {
+            toast.error("Error: No se pudo identificar al usuario. Inicia sesión nuevamente.");
+            return;
+        }
+
+        console.log("Opening shift for user:", uid, "Amount:", initialAmount);
+
+        try {
+            await openShift(uid, parseFloat(initialAmount));
+            toast.success("Caja abierta correctamente");
+        } catch (error: any) {
+            console.error("Open Shift Error in Component:", error);
+            // Error already handled in store? store doesn't throw? store awaits api.post.
+            // shift-store doesn't try-catch, so it bubbles up.
+            toast.error("Error al abrir caja. Verifica si ya tienes un turno abierto.");
+        }
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
 
     const filteredProducts = products?.filter((p) =>
         p.name.toLowerCase().includes(search.toLowerCase())
@@ -63,6 +132,52 @@ export default function POSPage() {
         });
         toast.success(`${product.name} agregado al carrito`);
     };
+
+    // Receipt Component
+    if (lastSale) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-white text-black z-50 fixed inset-0">
+                <div className="w-[300px] border p-4 print:border-none print:w-full">
+                    <div className="text-center mb-4">
+                        <h1 className="text-xl font-bold">LICORERIA DUSSAN</h1>
+                        <p className="text-sm">Ticket #{lastSale.id.slice(0, 8)}</p>
+                        <p className="text-sm">{new Date().toLocaleString()}</p>
+                    </div>
+                    <div className="border-b border-dashed my-2"></div>
+                    <div className="flex justify-between font-bold text-lg">
+                        <span>TOTAL</span>
+                        <span>${parseFloat(lastSale.total).toFixed(2)}</span>
+                    </div>
+                    <div className="text-center mt-4 text-sm">
+                        Pago: {lastSale.paymentMethod}
+                    </div>
+                    <div className="border-b border-dashed my-2"></div>
+                    <div className="text-center text-sm">¡Gracias por su compra!</div>
+
+                    <div className="mt-8 flex gap-2 print:hidden justify-center">
+                        <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Imprimir</Button>
+                        <Button variant="outline" onClick={() => setLastSale(null)}>Cerrar</Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Block if Shift Closed
+    if (!isOpen) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] gap-4">
+                <Lock className="h-16 w-16 text-muted-foreground" />
+                <h2 className="text-2xl font-bold">Caja Cerrada</h2>
+                <p className="text-muted-foreground">Debes abrir caja para realizar ventas.</p>
+                <div className="flex items-center gap-2">
+                    <Label>Fondo Inicial:</Label>
+                    <Input type="number" value={initialAmount} onChange={e => setInitialAmount(e.target.value)} className="w-32" />
+                </div>
+                <Button onClick={handleOpenShift}>Abrir Caja</Button>
+            </div>
+        )
+    }
 
     return (
         <div className="grid h-[calc(100vh-80px)] md:grid-cols-[1fr_400px] gap-6">
@@ -96,7 +211,7 @@ export default function POSPage() {
 
             <div className="flex flex-col h-full border-l pl-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold">Carrito de Compras</h2>
+                    <h2 className="text-xl font-bold">Carrito</h2>
                     <Button variant="ghost" size="icon" onClick={() => clearCart()}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -146,6 +261,20 @@ export default function POSPage() {
                 </div>
 
                 <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Label>Método de Pago:</Label>
+                        <Select value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Seleccionar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="CASH">Efectivo</SelectItem>
+                                <SelectItem value="CARD">Tarjeta</SelectItem>
+                                <SelectItem value="QR">QR / Transf.</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="flex items-center justify-between text-2xl font-bold border-t pt-4">
                         <span>Total:</span>
                         <span>${total().toFixed(2)}</span>
@@ -158,7 +287,7 @@ export default function POSPage() {
                     >
                         {saleMutation.isPending ? 'Procesando...' : (
                             <>
-                                <ShoppingCart className="mr-2 h-5 w-5" /> Confirmar Venta
+                                <ShoppingCart className="mr-2 h-5 w-5" /> Cobrar
                             </>
                         )}
                     </Button>
