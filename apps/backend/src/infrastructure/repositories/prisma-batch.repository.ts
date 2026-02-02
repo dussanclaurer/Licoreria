@@ -23,8 +23,25 @@ export class PrismaBatchRepository implements BatchRepository {
         return data.map(b => new Batch(b.id, b.productId, b.currentStock, b.expirationDate));
     }
 
-    async findExpiringSoon(productId: string): Promise<Batch[]> {
-        return this.findByProductId(productId);
+    async findExpiringSoon(daysThreshold: number = 30): Promise<Batch[]> {
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
+
+        const data = await prisma.batch.findMany({
+            where: {
+                expirationDate: {
+                    lte: thresholdDate,
+                    gte: new Date(), // Not already expired? Or maybe show expired too? Let's show upcoming.
+                },
+                currentStock: { gt: 0 }
+            },
+            include: { product: true }, // We might need product name
+            orderBy: { expirationDate: 'asc' },
+        });
+
+        // Note: Batch Entity doesn't have product Name. We might need a DTO or specific query in Controller.
+        // For now, return Batches. Controller might fetch Product details or we rely on ID.
+        return data.map(b => new Batch(b.id, b.productId, b.currentStock, b.expirationDate));
     }
 
     async updateStock(batchId: string, newStock: number, reason: string): Promise<void> {

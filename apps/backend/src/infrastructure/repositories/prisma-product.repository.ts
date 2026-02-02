@@ -10,6 +10,8 @@ export class PrismaProductRepository implements ProductRepository {
                 name: product.name,
                 price: product.price,
                 description: product.description,
+                imageUrl: product.imageUrl,
+                minStock: product.minStock,
             },
         });
     }
@@ -17,11 +19,28 @@ export class PrismaProductRepository implements ProductRepository {
     async findById(id: string): Promise<Product | null> {
         const data = await prisma.product.findUnique({ where: { id } });
         if (!data) return null;
-        return new Product(data.id, data.name, data.price.toNumber(), data.description);
+        return new Product(data.id, data.name, data.price.toNumber(), data.description, data.imageUrl, data.minStock);
     }
 
     async findAll(): Promise<Product[]> {
         const data = await prisma.product.findMany();
-        return data.map(p => new Product(p.id, p.name, p.price.toNumber(), p.description));
+        return data.map(p => new Product(p.id, p.name, p.price.toNumber(), p.description, p.imageUrl, p.minStock));
+    }
+
+    async delete(id: string): Promise<void> {
+        await prisma.product.delete({ where: { id } });
+    }
+
+    async update(product: Product): Promise<void> {
+        await prisma.product.update({
+            where: { id: product.id },
+            data: {
+                name: product.name,
+                price: product.price,
+                description: product.description,
+                imageUrl: product.imageUrl,
+                minStock: product.minStock,
+            },
+        });
     }
 }

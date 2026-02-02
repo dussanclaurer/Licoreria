@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
+    image: licoreria-backend:prod
     container_name: licoreria_backend_prod
     restart: always
     environment:
@@ -15,7 +16,7 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/licoreria?schema=public
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "3000:3000"
+      - "4000:3000"
     depends_on:
       - postgres
     networks:

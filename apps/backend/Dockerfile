@@ -1,31 +1,36 @@
 FROM node:20-alpine AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# Instalar OpenSSL y dependencias nativas básicas necesarias para Prisma/Bcrypt
+RUN apk add --no-cache openssl
 
 FROM base AS builder
 WORKDIR /app
+# Copiar todo el monorepo para el build
 COPY . .
-# Install dependencies
+RUN npm install -g pnpm
 RUN pnpm install --frozen-lockfile
-# Build the backend
+# Generar cliente y compilar
+RUN pnpm --filter @licoreria/backend exec prisma generate
 RUN pnpm --filter @licoreria/backend build
-
-# Create a self-contained production deployment
-# "deploy" creates a folder with the package and its production dependencies fully installed
-RUN pnpm --filter @licoreria/backend deploy --prod /prod/backend
 
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Copy the self-contained deployment (package.json + node_modules)
-COPY --from=builder /prod/backend .
+# 1. Copiar package.json del backend
+COPY apps/backend/package.json ./
 
-# Copy the compiled code explicitly (ensure we have the latest build)
+# 2. Instalar dependencias de producción MANUALMENTE
+# Esto garantiza que node_modules exista y sea compatible con Alpine
+RUN npm install --omit=dev
+
+# 3. Copiar código compilado y esquema
 COPY --from=builder /app/apps/backend/dist ./dist
-# Copy prisma schema for migrations if needed (although usually we use the generated client)
 COPY --from=builder /app/apps/backend/prisma ./prisma
+# Prisma Generate de nuevo para asegurar compatibilidad binaria en el runner final
+RUN npx prisma generate
+
+# 4. Asegurar permisos
+RUN chown -R node:node /app
 
 USER node
 EXPOSE 3000

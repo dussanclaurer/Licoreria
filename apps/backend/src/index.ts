@@ -13,8 +13,29 @@ server.register(cors, {
     origin: '*' // TODO: Configure for production
 });
 
-import { productRoutes } from './infrastructure/controllers/product.controller.js';
-server.register(productRoutes);
+// Assuming these imports and instantiations are now required based on the provided code edit
+import { ProductController } from './infrastructure/controllers/product.controller.js';
+import { JwtService } from './infrastructure/auth/jwt.service.js';
+import { AuthController } from './infrastructure/controllers/auth.controller.js';
+
+const productController = new ProductController(); // Assuming ProductController needs to be instantiated
+
+// Products & Batches
+server.register(async (instance) => {
+    instance.post('/products', productController.createProduct.bind(productController));
+    instance.get('/products', productController.listProducts.bind(productController));
+    instance.get('/alerts', productController.getAlerts.bind(productController));
+    instance.put('/products/:id', productController.updateProduct.bind(productController));
+    instance.delete('/products/:id', productController.deleteProduct.bind(productController));
+
+    instance.post('/batches', productController.addBatch.bind(productController));
+    instance.post('/sales', productController.registerSale.bind(productController));
+});
+
+// Auth
+const jwtService = new JwtService(process.env.JWT_SECRET || 'secret');
+const authController = new AuthController(jwtService);
+server.post('/auth/login', authController.login.bind(authController));
 
 server.get('/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString() };
