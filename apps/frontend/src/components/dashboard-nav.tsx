@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart, Package, LayoutDashboard, Settings, BarChart3 } from 'lucide-react';
+import { ShoppingCart, Package, LayoutDashboard, Settings, BarChart3, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -26,6 +26,11 @@ const items = [
         title: 'Reportes',
         href: '/dashboard/reports',
         icon: BarChart3,
+    },
+    {
+        title: 'Usuarios',
+        href: '/dashboard/users',
+        icon: Users,
     },
     {
         title: 'Configuración',

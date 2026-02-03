@@ -64,9 +64,12 @@ const start = async () => {
 
 import { CashController } from './infrastructure/controllers/cash.controller.js';
 import { ReportController } from './infrastructure/controllers/report.controller.js';
+import { UserController } from './infrastructure/controllers/user.controller.js';
+import { createRoleMiddleware } from './infrastructure/middleware/role.middleware.js';
 
 const cashController = new CashController();
 const reportController = new ReportController();
+const userController = new UserController();
 
 // Cash Management
 server.register(async (instance) => {
@@ -80,6 +83,19 @@ server.register(async (instance) => {
     instance.get('/reports/sales', reportController.getSalesReport.bind(reportController));
     instance.get('/reports/top-products', reportController.getTopProducts.bind(reportController));
     instance.get('/reports/inventory-logs', reportController.getInventoryLogs.bind(reportController));
+});
+
+// User Management (ADMIN only)
+server.register(async (instance) => {
+    // Apply role middleware to all routes in this scope
+    instance.addHook('onRequest', createRoleMiddleware(['ADMIN']));
+
+    instance.post('/users', userController.createUser.bind(userController));
+    instance.get('/users', userController.listUsers.bind(userController));
+    instance.get('/users/:id', userController.getUser.bind(userController));
+    instance.put('/users/:id', userController.updateUser.bind(userController));
+    instance.put('/users/:id/password', userController.changePassword.bind(userController));
+    instance.delete('/users/:id', userController.deleteUser.bind(userController));
 });
 
 start();
