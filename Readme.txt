@@ -1,36 +1,74 @@
-1. Diseño de Arquitectura: Headless & Hexagonal
-Para este sistema, se propone una Arquitectura Headless que separa completamente la interfaz del motor de reglas de negocio, permitiendo que el Backend actúe como una "fuente de verdad" única.
-Arquitectura del Backend (Hexagonal/Ports and Adapters)
-Se implementará un patrón de Arquitectura Hexagonal para aislar las reglas de negocio de los detalles técnicos. El sistema se divide en tres capas:
-Capa de Dominio (Core): Contiene las entidades esenciales (Producto, Venta, Lote) y las reglas de negocio puras, sin dependencias externas.
-Capa de Aplicación (Casos de Uso): Orquestación de procesos como la ejecución de una venta y descuento de stock.
-Capa de Infraestructura (Adaptadores): Implementación técnica de conexiones a bases de datos (ORM), pasarelas de pago y envío de notificaciones.
+# Sistema de Gestión para Licorería - Documentación del Sistema
 
-2. Stack Tecnológico Sugerido
-Backend,Node.js + TypeScript,Manejo eficiente de asincronía y tipado fuerte para transacciones seguras.
-Frontend,React y shadcn/ui,Comunicación vía JSON para una experiencia de usuario fluida en el POS.
-Persistencia,PostgreSQL,Estándar para integridad referencial y datos financieros.
-ORM,Prisma,Facilita el modelado de datos y la gestión de migraciones.
-Infraestructura,Docker,Garantiza paridad entre entornos de desarrollo (Ubuntu) y producción.
+Este documento describe el estado actual del sistema, su arquitectura implementada y las funcionalidades operativas disponibles.
 
-3. Modelo de Datos (Esquema Relacional)
-Se propone una estructura modular para separar la lógica de inventario de la de ventas:
-Products: Maestro de artículos y stock actual.
-Categories: Clasificación jerárquica (Licores, Snacks, etc.).
-Inventory_Logs: Registro histórico de movimientos para auditoría.
-Sales & Sale_Items: Cabecera y detalle de transacciones para trazabilidad total.
+## 1. Visión General y Arquitectura
+El sistema sigue una arquitectura **Monorepo** utilizando **TurboRepo**, separando claramente las responsabilidades en dos aplicaciones principales conectadas mediante APIs RESTful.
+La lógica de negocio del Backend sigue una **Arquitectura Hexagonal (Ports & Adapters)**, garantizando que el núcleo del dominio (reglas de negocio) permanezca agnóstico a la infraestructura (base de datos o frameworks web).
 
-4. Funcionalidades Críticas del Sistema
-Gestión de Inventario Avanzada
-Control de Lotes y Vencimientos: Crucial para productos perecederos como cervezas artesanales.
-Alertas de Stock Crítico: Notificaciones automáticas basadas en umbrales mínimos de existencia.
-Punto de Venta (POS)
-Interfaz Optimizada: Diseño adaptado para pantallas táctiles y atajos de teclado.
-Gestión Financiera: Soporte para múltiples métodos de pago (Efectivo, Tarjeta, QR) y control de arqueos de caja automáticos.
+### Stack Tecnológico Implementado
+- **Backend:** Node.js, Fastify, TypeScript, Zod (Validación), Prisma ORM (Persistencia).
+- **Frontend:** Next.js 14 (App Router), React, Tailwind CSS, shadcn/ui, Zustand (Estado Global: Carrito, Caja), TanStack Query.
+- **Base de Datos:** PostgreSQL (Relacional, Transaccional).
+- **Infraestructura:** Docker & Docker Compose (Entornos de Desarrollo y Producción).
 
-5. Ventajas de Ingeniería
-Testabilidad: La lógica de descuentos y stock se puede testear aislada de la base de datos.
-Flexibilidad de Despliegue: Facilidad para migrar de un servidor local a la nube (ej. Supabase) simplemente cambiando el adaptador de infraestructura.
-Escalabilidad: El backend está listo para servir a una futura App móvil o tienda online sin reescribir el código base.
+## 2. Funcionalidades Implementadas
 
-Nota para el despliegue en Linux: Es fundamental configurar correctamente los volúmenes en docker-compose para asegurar la persistencia de los datos durante los ciclos de despliegue.
+### A. Gestión de Inventario (Core)
+El sistema gestiona productos con lógica **FEFO (First-Expired, First-Out)** para el control de lotes, crucial para productos perecederos.
+- **Productos:** CRUD completo (Crear, Editar, Eliminar, Listar) con imágenes y stock mínimo.
+- **Lotes (Batches):** Registro de entradas de stock con fecha de vencimiento.
+- **Alertas:** Notificación automática en el Dashboard de lotes próximos a vencer (< 30 días).
+
+### B. Punto de Venta (POS)
+Interfaz optimizada para operación rápida en mostrador.
+- **Carrito de Compras:** Búsqueda rápida de productos, control de cantidades y cálculo de subtotales/totales.
+- **Validación de Stock:** El sistema impide la venta si no hay stock suficiente en los lotes disponibles.
+- **Selección de Pago:** Soporte para múltiples métodos:
+    - Efectivo
+    - Tarjeta
+    - QR / Transferencia
+- **Ticket Digital:** Generación automática de recibo tras la venta con opción de impresión inmediata (compatible con impresoras térmicas).
+
+### C. Gestión de Caja y Dinero (Cash Management)
+Módulo de control financiero para turnos de trabajo.
+- **Apertura de Turno:** Bloqueo del POS hasta que se abra caja con un fondo inicial (Change Fund).
+- **Cierre de Turno:** Registro del monto final en caja y cierre de operaciones.
+- **Bloqueo Operativo:** La interfaz impide realizar ventas si no existe un turno activo para el usuario.
+- **Persistencia:** Estado de caja sincronizado entre Backend y Frontend.
+
+### D. Seguridad y Autenticación
+- **JWT (JSON Web Tokens):** Protección de rutas API y sesiones de usuario.
+- **Login:** Interfaz de acceso seguro.
+- **Roles:** Sistema preparado para multi-usuario (actualmente configurado con Admin).
+
+## 3. Modelo de Datos (Resumen)
+- **Product:** Entidad base. Relación 1:N con Batches.
+- **Batch:** Stock real con fecha de expiración.
+- **CashShift:** Turno de caja (Usuario, Monto Inicial/Final, Estado).
+- **Sale:** Cabecera de venta (Total, Método Pago, Vinculación a Turno).
+- **SaleItem:** Detalle de venta (Producto, Cantidad, Precio).
+
+## 4. Instrucciones de Despliegue
+El sistema está contenerizado para facilitar su ejecución.
+
+### Requisitos
+- Docker & Docker Compose
+- Node.js & PNPM (para desarrollo local fuera de contenedores)
+
+### Comandos Principales
+```bash
+# Iniciar todo el ecosistema (Base de Datos + Backend + Frontend)
+docker-compose up -d --build
+
+# Ver logs en tiempo real
+docker-compose logs -f
+
+# Detener sistema
+docker-compose down
+```
+
+### Accesos
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:4000
+- **Credenciales por defecto:** admin / admin123 (ver semilla de base de datos).

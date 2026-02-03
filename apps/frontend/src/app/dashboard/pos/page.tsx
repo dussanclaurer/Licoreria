@@ -44,7 +44,9 @@ export default function POSPage() {
             const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
                 return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
             }).join(''));
-            return JSON.parse(jsonPayload).userId;
+            const payload = JSON.parse(jsonPayload);
+            // Backend uses 'id' not 'userId' in JWT payload
+            return payload.id || null;
         } catch (e) {
             console.error("Token decode error:", e);
             return null;

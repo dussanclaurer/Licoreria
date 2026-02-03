@@ -63,14 +63,23 @@ const start = async () => {
 };
 
 import { CashController } from './infrastructure/controllers/cash.controller.js';
+import { ReportController } from './infrastructure/controllers/report.controller.js';
 
 const cashController = new CashController();
+const reportController = new ReportController();
 
 // Cash Management
 server.register(async (instance) => {
     instance.post('/cash/open', cashController.openShift.bind(cashController));
     instance.post('/cash/close', cashController.closeShift.bind(cashController));
     instance.get('/cash/status/:userId', cashController.checkStatus.bind(cashController));
+});
+
+// Reports
+server.register(async (instance) => {
+    instance.get('/reports/sales', reportController.getSalesReport.bind(reportController));
+    instance.get('/reports/top-products', reportController.getTopProducts.bind(reportController));
+    instance.get('/reports/inventory-logs', reportController.getInventoryLogs.bind(reportController));
 });
 
 start();

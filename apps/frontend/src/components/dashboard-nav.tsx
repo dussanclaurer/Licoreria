@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart, Package, LayoutDashboard, Settings } from 'lucide-react';
+import { ShoppingCart, Package, LayoutDashboard, Settings, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -21,6 +21,11 @@ const items = [
         title: 'Inventario',
         href: '/dashboard/inventory',
         icon: Package,
+    },
+    {
+        title: 'Reportes',
+        href: '/dashboard/reports',
+        icon: BarChart3,
     },
     {
         title: 'Configuración',
