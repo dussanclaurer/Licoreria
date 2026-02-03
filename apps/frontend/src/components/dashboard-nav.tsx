@@ -39,7 +39,11 @@ const items = [
     },
 ];
 
-export function DashboardNav() {
+interface DashboardNavProps {
+    onItemClick?: () => void;
+}
+
+export function DashboardNav({ onItemClick }: DashboardNavProps = {}) {
     const pathname = usePathname();
 
     return (
@@ -50,6 +54,7 @@ export function DashboardNav() {
                     <Link
                         key={index}
                         href={item.href}
+                        onClick={onItemClick}
                     >
                         <span
                             className={cn(

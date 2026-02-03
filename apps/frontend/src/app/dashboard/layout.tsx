@@ -1,4 +1,5 @@
 import { DashboardNav } from '@/components/dashboard-nav';
+import { MobileNav } from '@/components/mobile-nav';
 import { UserNav } from '@/components/user-nav';
 import { Separator } from '@/components/ui/separator';
 import { AuthGuard } from '@/components/auth-guard';
@@ -10,20 +11,36 @@ export default function DashboardLayout({
 }) {
     return (
         <AuthGuard>
-            <div className="flex min-h-screen flex-col space-y-6">
-                <header className="sticky top-0 z-40 border-b bg-background">
-                    <div className="container flex h-16 items-center justify-between py-4">
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-semibold tracking-tight">Licorería System</h2>
+            <div className="flex min-h-screen">
+                {/* Sidebar for Desktop */}
+                <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-50 bg-background border-r">
+                    <div className="flex flex-col flex-1 overflow-y-auto pt-5 pb-4">
+                        <div className="flex items-center flex-shrink-0 px-4">
+                            <h2 className="text-xl font-bold tracking-tight">Licorería</h2>
                         </div>
-                        <UserNav />
+                        <Separator className="my-4" />
+                        <nav className="flex-1 px-2 space-y-1">
+                            <DashboardNav />
+                        </nav>
                     </div>
-                </header>
-                <div className="container grid flex-1 gap-12 md:grid-cols-[200px_1fr]">
-                    <aside className="hidden w-[200px] flex-col md:flex">
-                        <DashboardNav />
-                    </aside>
-                    <main className="flex w-full flex-1 flex-col overflow-hidden">
+                </aside>
+
+                {/* Main content area */}
+                <div className="flex flex-col flex-1 md:pl-64">
+                    {/* Top header */}
+                    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6 lg:px-8">
+                        {/* Mobile menu button */}
+                        <MobileNav />
+
+                        <div className="flex items-center flex-1 gap-2">
+                            <h2 className="text-lg font-semibold tracking-tight md:hidden">Licorería</h2>
+                        </div>
+
+                        <UserNav />
+                    </header>
+
+                    {/* Main content */}
+                    <main className="flex-1 p-4 sm:p-6 lg:p-8">
                         {children}
                     </main>
                 </div>
